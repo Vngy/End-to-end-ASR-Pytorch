@@ -152,6 +152,7 @@ class BaseSolver():
             elif 'text' in log_name or 'hyp' in log_name:
                 self.log.add_text(log_name, log_dict, self.step)
             else:
+                print("log_name =\t ", log_name, "log_dict=\t ", log_dict)
                 self.log.add_scalars(log_name, log_dict, self.step)
 
     def save_checkpoint(self, f_name, metric, score, show_msg=True):

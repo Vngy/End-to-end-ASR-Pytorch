@@ -1,8 +1,12 @@
 import math
 import torch
+import pdb
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+import echotorch.nn.reservoir as etnn
+from echotorch.utils.matrix_generation import matrix_factory
+
 from torch.distributions.categorical import Categorical
 
 from src.util import init_weights, init_gate
@@ -12,7 +16,7 @@ from src.module import VGGExtractor, CNNExtractor, RNNLayer, ScaleDotAttention, 
 class ASR(nn.Module):
     ''' ASR model, including Encoder/Decoder(s)'''
 
-    def __init__(self, input_size, vocab_size, init_adadelta, ctc_weight, encoder, attention, decoder, emb_drop=0.0):
+    def __init__(self, input_size, vocab_size, init_adadelta, ctc_weight, encoder, attention, decoder, freeze_weights, emb_drop=0.0):
         super(ASR, self).__init__()
 
         # Setup
@@ -22,20 +26,41 @@ class ASR(nn.Module):
         self.enable_ctc = ctc_weight > 0
         self.enable_att = ctc_weight != 1
         self.lm = None
-
+        self.freeze_weights = freeze_weights
         # Modules
         self.encoder = Encoder(input_size, **encoder)
+        print("Encoder model:\n", self.encoder)
         if self.enable_ctc:
             self.ctc_layer = nn.Linear(self.encoder.out_dim, vocab_size)
+            print("CTC Model:\n", self.ctc_layer)
         if self.enable_att:
             self.dec_dim = decoder['dim']
             self.pre_embed = nn.Embedding(vocab_size, self.dec_dim)
             self.embed_drop = nn.Dropout(emb_drop)
             self.decoder = Decoder(
                 self.encoder.out_dim+self.dec_dim, vocab_size, **decoder)
+            print("Decoder model:\n", self.decoder)
             query_dim = self.dec_dim*self.decoder.layer
             self.attention = Attention(
                 self.encoder.out_dim, query_dim, **attention)
+            print("Attention model:\n", self.attention)
+
+        if len(self.freeze_weights) > 0:
+            for param in self.freeze_weights:
+                if param == "embed":
+                   for s_param in self.pre_embed.parameters():
+                        s_param.requires_grad = False
+                   print("Embedding layers frozen")
+                if param == "encoder":
+                   for s_param in self.encoder.parameters():
+                        s_param.requires_grad = False
+                   print("Encoder layers frozen")
+                if param == "decoder":
+                   for s_param in self.decoder.parameters():
+                        s_param.requires_grad = False
+                   print("Decoder layers frozen")
+
+
 
         # Init
         if init_adadelta:
@@ -90,7 +115,7 @@ class ASR(nn.Module):
 
         # Encode
         encode_feature, encode_len = self.encoder(audio_feature, feature_len)
-
+        esn_state = self.encoder.get_esn_state()
         # CTC based decoding
         if self.enable_ctc:
             ctc_output = F.log_softmax(self.ctc_layer(encode_feature), dim=-1)
@@ -152,7 +177,7 @@ class ASR(nn.Module):
             if get_dec_state:
                 dec_state = torch.stack(dec_state, dim=1)
 
-        return ctc_output, encode_len, att_output, att_seq, dec_state
+        return ctc_output, encode_len, att_output, att_seq, dec_state, esn_state
 
 
 class Decoder(nn.Module):
@@ -317,18 +342,22 @@ class Encoder(nn.Module):
     ''' Encoder (a.k.a. Listener in LAS)
         Encodes acoustic feature to latent representation, see config file for more details.'''
 
-    def __init__(self, input_size, prenet, module, bidirection, dim, dropout, layer_norm, proj, sample_rate, sample_style):
+    def __init__(self, input_size, prenet, module, bidirection, dim, dropout, layer_norm, proj, sample_rate, sample_style, res):
         super(Encoder, self).__init__()
 
         # Hyper-parameters checking
         self.vgg = prenet == 'vgg'
         self.cnn = prenet == 'cnn'
+        self.reservoir = prenet == 'res'
+        if self.reservoir:
+            self.res_size = res
         self.sample_rate = 1
         assert len(sample_rate) == len(dropout), 'Number of layer mismatch'
         assert len(dropout) == len(dim), 'Number of layer mismatch'
         num_layers = len(dim)
         assert num_layers >= 1, 'Encoder should have at least 1 layer'
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Construct model
         module_list = []
         input_dim = input_size
@@ -344,23 +373,72 @@ class Encoder(nn.Module):
             module_list.append(cnn_extractor)
             input_dim = cnn_extractor.out_dim
             self.sample_rate = self.sample_rate*4
+        if self.reservoir:
+            w_connectivity = 0.20
+            win_connectivity = 0.50
+            spectral_radius = 0.9
+            leak_rate = 0.95
+            input_scaling = 1.0
+            res_layers = 1
+            bias_scaling = 0.0
+            deep_esn_type = 'IF'
+            hidden_dim = self.res_size #from constructor arg
+            output_layer = False
+            output_dim = self.res_size*res_layers if not output_layer else hidden_dim 
+            self.output_dim = output_dim
+            #Generate weight matrices
+            w_generator = matrix_factory.get_generator(name='normal', spectral_radius=spectral_radius, connectivity=w_connectivity)
+            win_generator = matrix_factory.get_generator(name='normal', connectivity=win_connectivity)
+            wbias_generator = matrix_factory.get_generator(name='normal', scale=bias_scaling)
+            esc = etnn.DeepESN(n_layers = res_layers,
+                               input_dim = input_dim,
+                               hidden_dim = hidden_dim,
+                               output_dim = output_dim,
+                               leak_rate = leak_rate,
+                               w_generator = w_generator,
+                               win_generator = win_generator,
+                               wbias_generator = wbias_generator,
+                               input_scaling = input_scaling,
+                               input_type = deep_esn_type,
+                               create_output=output_layer)
+
+            #esc = etnn.ESNCell(input_dim=input_dim, output_dim=self.reservoir)
+            module_list.append(esc)
+            self.input_dim=self.output_dim
+            self.sample_rate = self.sample_rate*4
 
         # Recurrent encoder
         if module in ['LSTM', 'GRU']:
             for l in range(num_layers):
-                module_list.append(RNNLayer(input_dim, module, dim[l], bidirection, dropout[l], layer_norm[l],
+                module_list.append(RNNLayer(self.input_dim, module, dim[l], bidirection, dropout[l], layer_norm[l],
                                             sample_rate[l], sample_style, proj[l]))
-                input_dim = module_list[-1].out_dim
+                self.input_dim = module_list[-1].out_dim
                 self.sample_rate = self.sample_rate*sample_rate[l]
         else:
             raise NotImplementedError
 
         # Build model
         self.in_dim = input_size
-        self.out_dim = input_dim
+        self.out_dim = self.input_dim
         self.layers = nn.ModuleList(module_list)
 
+
+    def get_esn_state(self):
+        ''' Return esn hidden state'''
+        device = next(self.parameters()).device
+        if self.reservoir:
+            return self.esn_state.to(device)
+
     def forward(self, input_x, enc_len):
-        for _, layer in enumerate(self.layers):
-            input_x, enc_len = layer(input_x, enc_len)
+        for i, layer in enumerate(self.layers):
+            if self.reservoir and i == 0:
+                device = next(self.parameters()).device
+                #pdb.set_trace()
+                input_x = layer(input_x, input_x).to(device)
+                self.esn_state = input_x.transpose(1, 2).unsqueeze(1)
+                enc_len = torch.Tensor([input_x[i].transpose(0,1).shape[-1] for i in range(input_x.shape[0])]).int()
+                print("Encoder lengths: ", enc_len)
+            else:
+                input_x, enc_len = layer(input_x, enc_len)
+                print("Encoder lengths: ", enc_len)
         return input_x, enc_len

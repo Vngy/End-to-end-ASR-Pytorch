@@ -104,9 +104,9 @@ class Solver(BaseSolver):
                 ctc_output, encode_len, att_output, att_align, dec_state, esn_state = \
                     self.model(feat, feat_len, max(txt_len), tf_rate=tf_rate,
                                teacher=txt, get_dec_state=self.emb_reg)
-                self.verbose('CTC Output: {}'.format(ctc_output))
-                self.verbose('CTC Output Shape: {}'.format(ctc_output.shape))
-                self.verbose('Encoder lengths of {} should be <= CTC Prob Input Length of {}'.format(encode_len,ctc_output.transpose(0,1).shape))
+                #self.verbose('CTC Output: {}'.format(ctc_output))
+                #self.verbose('CTC Output Shape: {}'.format(ctc_output.shape))
+                #self.verbose('Encoder lengths of {} should be <= CTC Prob Input Length of {}'.format(encode_len,ctc_output.transpose(0,1).shape))
                 # Plugins
                 if self.emb_reg:
                     emb_loss, fuse_output = self.emb_decoder(

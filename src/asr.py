@@ -437,8 +437,6 @@ class Encoder(nn.Module):
                 input_x = layer(input_x, input_x).to(device)
                 self.esn_state = input_x.transpose(1, 2).unsqueeze(1)
                 enc_len = torch.Tensor([input_x[i].transpose(0,1).shape[-1] for i in range(input_x.shape[0])]).int()
-                print("Encoder lengths: ", enc_len)
             else:
                 input_x, enc_len = layer(input_x, enc_len)
-                print("Encoder lengths: ", enc_len)
         return input_x, enc_len

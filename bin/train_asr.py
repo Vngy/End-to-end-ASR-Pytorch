@@ -1,4 +1,7 @@
 import torch
+import csv
+import string
+import random
 from src.solver import BaseSolver
 
 from src.asr import ASR
@@ -27,6 +30,9 @@ class Solver(BaseSolver):
 
         return feat, feat_len, txt, txt_len
 
+    def rand_str(self, length):
+        return ''.join(random.choice(string.ascii_letters) for m in range(length))
+    
     def load_data(self):
         ''' Load data for training/validation, store tokenizer and input/output shape'''
         self.tr_set, self.dv_set, self.feat_dim, self.vocab_size, self.tokenizer, msg = \
@@ -42,7 +48,8 @@ class Solver(BaseSolver):
                          self.config['model']).to(self.device)
         self.verbose(self.model.create_msg())
         model_paras = [{'params': self.model.parameters()}]
-
+        self.csv_log_name = self.rand_str(10)
+        self.verbose('Initialized model {}'.format(self.csv_log_name))
         # Losses
         self.seq_loss = torch.nn.CrossEntropyLoss(ignore_index=0)
         # Note: zero_infinity=False is unstable?
@@ -210,6 +217,9 @@ class Solver(BaseSolver):
         # Ckpt if performance improves
         for task in ['att', 'ctc']:
             dev_wer[task] = sum(dev_wer[task])/len(dev_wer[task])
+            with open(self.csv_log_name + '.csv', 'a') as csvfile:
+                writr = csv.writer(csvfile)
+                writr.writerow([self.step, task, dev_wer[task]])
             if dev_wer[task] < self.best_wer[task]:
                 self.best_wer[task] = dev_wer[task]
                 self.save_checkpoint('best_{}.pth'.format(task), 'wer', dev_wer[task])

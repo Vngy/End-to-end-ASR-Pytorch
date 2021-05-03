@@ -1,15 +1,15 @@
 data:
   corpus:                                 
-    name: 'Torgo'                   # Specify corpus
-    path: '/home/dwa6259/grad_work/merkel/datasets/TORGO/torgo'          # Path to raw LibriSpeech dataset
-    train_split: ['train-clean-t'] # Name of data splits to be used as training set
-    dev_split: ['dev-clean-t']              # Name of data splits to be used as validation set
+    name: 'memphis'                   # Specify corpus
+    path: '/home/dwa6259/grad_work/merkel/datasets/MEMPHIS/memphis'          # Path to raw LibriSpeech dataset
+    train_split: ['test-clean-m'] # Name of data splits to be used as training set
+    dev_split: ['dev-clean-m']              # Name of data splits to be used as validation set
     bucketing: True                       # Enable/Disable bucketing 
-    batch_size: 4
+    batch_size: 16
   audio:                                  # Attributes of audio feature
     feat_type: 'fbank'
     feat_dim:  40
-    frame_length: 10                      # ms
+    frame_length: 4                      # ms
     frame_shift: 10                       # ms
     dither: 0                             # random dither audio, 0: no dither
     apply_cmvn: True
@@ -33,10 +33,9 @@ hparas:                                   # Experiment hyper-parameters
 
 model:                                    # Model architecture
   ctc_weight: 0.5                         # Weight for CTC loss
-  freeze_weights: []
+  freeze_weights: ['encoder']
   encoder:
-    prenet: 'res'                         # 'vgg'/'cnn'/''
-    res: 256
+    prenet: 'vgg'                         # 'vgg'/'cnn'/''
     # vgg: True                             # 4x reduction on time feature extraction
     module: 'LSTM'                        # 'LSTM'/'GRU'/'Transformer'
     bidirection: True
@@ -49,7 +48,7 @@ model:                                    # Model architecture
   attention:
     mode: 'dot'                           # 'dot'/'loc'
     dim: 300
-    num_head: 1
+    num_head: 8
     v_proj: False                         # if False and num_head>1, encoder state will be duplicated for each head
     temperature: 0.5                      # scaling factor for attention
     loc_kernel_size: 100                  # just for mode=='loc'

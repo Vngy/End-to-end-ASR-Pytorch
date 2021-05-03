@@ -4,13 +4,16 @@ import pandas as pd
 import editdistance as ed
 
 SEP = ' '
-
 # Arguments
 parser = argparse.ArgumentParser(
     description='Script for evaluating recognition results.')
 parser.add_argument('--file', type=str, help='Path to result csv.')
 paras = parser.parse_args()
 
+if 'beam' in str(paras.file):
+    columns = ['it','fn','hyp','truth']
+else:
+    columns = ['fn', 'hyp', 'truth']
 # Error rate functions
 
 
@@ -24,6 +27,7 @@ def cal_wer(row):
 
 # Evaluation
 result = pd.read_csv(paras.file, sep='\t')
+print(result)
 result['hyp_char_cnt'] = result.apply(lambda x: len(x.hyp), axis=1)
 result['hyp_word_cnt'] = result.apply(lambda x: len(x.hyp.split(SEP)), axis=1)
 result['truth_char_cnt'] = result.apply(lambda x: len(x.truth), axis=1)

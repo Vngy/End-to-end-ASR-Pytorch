@@ -1,0 +1,17 @@
+# Most of the parameters will be imported from the training config
+src:
+  ckpt: 'ckpt/asr_torgo_transfer_sd0/asr_example_sd0/best_att.pth'
+  config: 'config/torgo/asr_example.yaml'
+data:
+  corpus:
+    name:  'torgo'
+    dev_split: ['dev-clean-t']
+    test_split: ['test-clean-t']
+decode:
+  beam_size: 20
+  min_len_ratio: 0.02
+  max_len_ratio: 0.07
+  lm_path: 'ckpt/lm_example_sd0/lm_example_sd0/best_ppx.pth'
+  lm_config: 'config/libri/lm_example.yaml'
+  lm_weight: 0.5
+  ctc_weight: 0.0

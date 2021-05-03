@@ -68,6 +68,8 @@ def create_dataset(tokenizer, ascending, name, path, bucketing, batch_size,
     # Recognize corpus
     if name.lower() == "librispeech":
         from corpus.librispeech import LibriDataset as Dataset
+    elif name.lower() == "memphis":
+        from corpus.memphis import MemphisDataset as Dataset
     elif name.lower() == "torgo":
         from corpus.torgo import TorgoDataset as Dataset
     else:
@@ -111,6 +113,8 @@ def create_textset(tokenizer, train_split, dev_split, name, path, bucketing, bat
     # Recognize corpus
     if name.lower() == "librispeech":
         from corpus.librispeech import LibriTextDataset as Dataset
+    elif name.lower() == "memphis":
+        from corpus.mempis import MemphisTextDataset as Dataset
     elif name.lower() == "torgo":
         from corpus.torgo import TorgoTextDataset as Dataset
     else:

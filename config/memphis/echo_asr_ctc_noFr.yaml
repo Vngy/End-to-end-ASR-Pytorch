@@ -1,15 +1,15 @@
 data:
   corpus:                                 
-    name: 'Torgo'                   # Specify corpus
-    path: '/home/dwa6259/grad_work/merkel/datasets/TORGO/torgo'          # Path to raw LibriSpeech dataset
-    train_split: ['train-clean-t'] # Name of data splits to be used as training set
-    dev_split: ['dev-clean-t']              # Name of data splits to be used as validation set
+    name: 'memphis'                   # Specify corpus
+    path: '/home/dwa6259/grad_work/merkel/datasets/MEMPHIS/memphis'          # Path to raw LibriSpeech dataset
+    train_split: ['test-clean-m'] # Name of data splits to be used as training set
+    dev_split: ['dev-clean-m']              # Name of data splits to be used as validation set
     bucketing: True                       # Enable/Disable bucketing 
-    batch_size: 4
+    batch_size: 16
   audio:                                  # Attributes of audio feature
     feat_type: 'fbank'
     feat_dim:  40
-    frame_length: 10                      # ms
+    frame_length: 4                      # ms
     frame_shift: 10                       # ms
     dither: 0                             # random dither audio, 0: no dither
     apply_cmvn: True

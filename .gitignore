@@ -121,8 +121,8 @@ save
 TODO
 checkpoint
 run.sh
-pretrained-models/*/*.pth
+*.pth
 transcriptions/*
-incoming_audio/*
+incoming_audio/client/*
 # swap file
 *.swp

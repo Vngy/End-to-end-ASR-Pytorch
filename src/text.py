@@ -113,6 +113,7 @@ class SubwordTextEncoder(_BaseTextEncoder):
                 continue
             else:
                 crop_idx.append(idx)
+        print(crop_idx)
         return self.spm.decode_ids(crop_idx)
 
     @classmethod

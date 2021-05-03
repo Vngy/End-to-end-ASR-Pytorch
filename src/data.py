@@ -16,10 +16,9 @@ def collect_audio_batch(batch, audio_transform, mode):
        e.g. [(file1,txt1),(file2,txt2),...] '''
 
     # Bucketed batch should be [[(file1,txt1),(file2,txt2),...]]
-    if type(batch[0]) is not tuple:
-        batch = batch[0]
     # Make sure that batch size is reasonable
-    first_len = audio_transform(str(batch[0][0])).shape[0]
+    print(batch)
+    first_len = audio_transform(str(batch[0])).shape[0]
     if first_len > HALF_BATCHSIZE_AUDIO_LEN and mode == 'train':
         batch = batch[:len(batch)//2]
 
@@ -27,11 +26,11 @@ def collect_audio_batch(batch, audio_transform, mode):
     file, audio_feat, audio_len, text = [], [], [], []
     with torch.no_grad():
         for b in batch:
-            file.append(str(b[0]).split('/')[-1].split('.')[0])
-            feat = audio_transform(str(b[0]))
+            file.append(str(b).split('/')[-1].split('.')[0])
+            feat = audio_transform(str(b))
             audio_feat.append(feat)
             audio_len.append(len(feat))
-            text.append(torch.LongTensor(b[1]))
+            text.append(torch.LongTensor([0]))
     # Descending audio length within each batch
     audio_len, file, audio_feat, text = zip(*[(feat_len, f_name, feat, txt)
                                               for feat_len, f_name, feat, txt in sorted(zip(audio_len, file, audio_feat, text), reverse=True, key=lambda x:x[0])])
@@ -70,38 +69,26 @@ def create_dataset(tokenizer, ascending, name, path, bucketing, batch_size,
         from corpus.librispeech import LibriDataset as Dataset
     elif name.lower() == "torgo":
         from corpus.torgo import TorgoDataset as Dataset
+    elif name.lower() == "incomingaudio":
+        from corpus.incomingaudio import IncomingAudioDataset as Dataset
     else:
         raise NotImplementedError
 
     # Create dataset
-    if train_split is not None:
         # Training mode
-        mode = 'train'
-        tr_loader_bs = 1 if bucketing and (not ascending) else batch_size
-        bucket_size = batch_size if bucketing and (
-            not ascending) else 1  # Ascending without bucketing
+    mode = 'test'
+        #tr_loader_bs = 1 if bucketing and (not ascending) else batch_size
+        #bucket_size = batch_size if bucketing and (
+        #    not ascending) else 1  # Ascending without bucketing
         # Do not use bucketing for dev set
-        dv_set = Dataset(path, dev_split, tokenizer, 1)
-        tr_set = Dataset(path, train_split, tokenizer,
-                         bucket_size, ascending=ascending)
+    dv_set = Dataset(path, dev_split, tokenizer, 1)
+        #tr_set = Dataset(path, train_split, tokenizer,
+        #                 bucket_size, ascending=ascending)
         # Messages to show
-        msg_list = _data_msg(name, path, train_split.__str__(), len(tr_set),
-                             dev_split.__str__(), len(dv_set), batch_size, bucketing)
+        #msg_list = _data_msg(name, path, train_split.__str__(), len(tr_set),
+        #                     dev_split.__str__(), len(dv_set), batch_size, bucketing)
 
-        return tr_set, dv_set, tr_loader_bs, batch_size, mode, msg_list
-    else:
-        # Testing model
-        mode = 'test'
-        # Do not use bucketing for dev set
-        dv_set = Dataset(path, dev_split, tokenizer, 1)
-        # Do not use bucketing for test set
-        tt_set = Dataset(path, test_split, tokenizer, 1)
-        # Messages to show
-        msg_list = _data_msg(name, path, dev_split.__str__(), len(dv_set),
-                             test_split.__str__(), len(tt_set), batch_size, False)
-        msg_list = [m.replace('Dev', 'Test').replace(
-            'Train', 'Dev') for m in msg_list]
-        return dv_set, tt_set, batch_size, batch_size, mode, msg_list
+    return dv_set, batch_size, mode
 
 
 def create_textset(tokenizer, train_split, dev_split, name, path, bucketing, batch_size):
@@ -130,6 +117,7 @@ def create_textset(tokenizer, train_split, dev_split, name, path, bucketing, bat
     return tr_set, dv_set, tr_loader_bs, batch_size, msg_list
 
 
+
 def load_dataset(n_jobs, use_gpu, pin_memory, ascending, corpus, audio, text):
     ''' Prepare dataloader for training/validation'''
 
@@ -138,26 +126,20 @@ def load_dataset(n_jobs, use_gpu, pin_memory, ascending, corpus, audio, text):
     # Text tokenizer
     tokenizer = load_text_encoder(**text)
     # Dataset (in testing mode, tr_set=dv_set, dv_set=tt_set)
-    tr_set, dv_set, tr_loader_bs, dv_loader_bs, mode, data_msg = create_dataset(
+    dv_set, dv_loader_bs, mode = create_dataset(
         tokenizer, ascending, **corpus)
     # Collect function
-    collect_tr = partial(collect_audio_batch,
-                         audio_transform=audio_transform, mode=mode)
     collect_dv = partial(collect_audio_batch,
                          audio_transform=audio_transform, mode='test')
     # Shuffle/drop applied to training set only
-    shuffle = (mode == 'train' and not ascending)
-    drop_last = shuffle
     # Create data loader
-    tr_set = DataLoader(tr_set, batch_size=tr_loader_bs, shuffle=shuffle, drop_last=drop_last, collate_fn=collect_tr,
-                        num_workers=n_jobs, pin_memory=use_gpu)
     dv_set = DataLoader(dv_set, batch_size=dv_loader_bs, shuffle=False, drop_last=False, collate_fn=collect_dv,
                         num_workers=n_jobs, pin_memory=pin_memory)
     # Messages to show
-    data_msg.append('I/O spec.  | Audio feature = {}\t| feature dim = {}\t| Token type = {}\t| Vocab size = {}'
-                    .format(audio['feat_type'], feat_dim, tokenizer.token_type, tokenizer.vocab_size))
+    #data_msg.append('I/O spec.  | Audio feature = {}\t| feature dim = {}\t| Token type = {}\t| Vocab size = {}'
+    #                .format(audio['feat_type'], feat_dim, tokenizer.token_type, tokenizer.vocab_size))
 
-    return tr_set, dv_set, feat_dim, tokenizer.vocab_size, tokenizer, data_msg
+    return dv_set, feat_dim, tokenizer.vocab_size, tokenizer
 
 
 def load_textset(n_jobs, use_gpu, pin_memory, corpus, text):

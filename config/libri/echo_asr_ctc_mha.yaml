@@ -1,9 +1,9 @@
 data:
   corpus:                                 
-    name: 'Librispeech'                   # Specify corpus
-    path: '/home/dwa6259/grad_work/merkel/LibriSpeech'          # Path to raw LibriSpeech dataset
-    train_split: ['train-clean-100','train-clean-360', 'train-other-500'] # Name of data splits to be used as training set
-    dev_split: ['dev-clean']              # Name of data splits to be used as validation set
+    name: 'IncomingAudio'                   # Specify corpus
+    path: './incoming_audio'          # Path to raw LibriSpeech dataset
+    train_split: ['client'] # Name of data splits to be used as training set
+    dev_split: ['client']              # Name of data splits to be used as validation set
     bucketing: True                       # Enable/Disable bucketing 
     batch_size: 16
   audio:                                  # Attributes of audio feature

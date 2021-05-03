@@ -1,9 +1,9 @@
 data:
   corpus:                                 
-    name: 'Librispeech'                   # Specify corpus
-    path: 'data/LibriSpeech'          # Path to raw LibriSpeech dataset
-    train_split: ['train-clean-100','train-clean-360'] # Name of data splits to be used as training set
-    dev_split: ['dev-clean']              # Name of data splits to be used as validation set
+    name: 'IncomingAudio'                   # Specify corpus
+    path: './incoming_audio'          # Path to raw LibriSpeech dataset
+    train_split: ['client'] # Name of data splits to be used as training set
+    dev_split: ['client']              # Name of data splits to be used as validation set
     bucketing: True                       # Enable/Disable bucketing 
     batch_size: 16
   audio:                                  # Attributes of audio feature
@@ -32,7 +32,7 @@ hparas:                                   # Experiment hyper-parameters
   curriculum: 0
 
 model:                                    # Model architecture
-  ctc_weight: 0.0                         # Weight for CTC loss
+  ctc_weight: 0.5                         # Weight for CTC loss
   encoder:
     prenet: 'vgg'                         # 'vgg'/'cnn'/''
     # vgg: True                             # 4x reduction on time feature extraction
@@ -45,7 +45,7 @@ model:                                    # Model architecture
     sample_rate: [1,1,1,1,1]
     sample_style: 'drop'                  # 'drop'/'concat'
   attention:
-    mode: 'loc'                           # 'dot'/'loc'
+    mode: 'dot'                           # 'dot'/'loc'
     dim: 300
     num_head: 1
     v_proj: False                         # if False and num_head>1, encoder state will be duplicated for each head

@@ -219,3 +219,10 @@ class BaseSolver():
         Called by main to execute training/inference
         '''
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def eval(self): 
+        '''
+        Called by main to execute inference on server without beam searching
+        '''
+        raise NotImplementedError

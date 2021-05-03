@@ -1,0 +1,17 @@
+# Most of the parameters will be imported from the training config
+src:
+  ckpt: 'pretrained-models/elas_sha_libri/best_ctc.pth'
+  config: 'config/libri/echo_asr_ctc.yaml'
+data:
+  corpus:
+    name:  'IncomingAudio'
+    dev_split: ['client']
+    test_split: ['client']
+decode:
+  beam_size: 20
+  min_len_ratio: 0.01
+  max_len_ratio: 0.07
+  lm_path: 'pretrained-models/lm/best_ppx.pth'
+  lm_config: 'config/libri/lm_example.yaml'
+  lm_weight: 0.6
+  ctc_weight: 0.15

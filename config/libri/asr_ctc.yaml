@@ -5,7 +5,7 @@ data:
     train_split: ['client'] # Name of data splits to be used as training set
     dev_split: ['client']              # Name of data splits to be used as validation set
     bucketing: True                       # Enable/Disable bucketing 
-    batch_size: 1
+    batch_size: 16
   audio:                                  # Attributes of audio feature
     feat_type: 'fbank'
     feat_dim:  40
@@ -21,7 +21,7 @@ data:
 
 hparas:                                   # Experiment hyper-parameters
   valid_step: 5000
-  max_step: 4500001
+  max_step: 1000001
   tf_start: 1.0
   tf_end: 1.0
   tf_step: 500000
@@ -31,13 +31,13 @@ hparas:                                   # Experiment hyper-parameters
   lr_scheduler: 'fixed'                   # 'fixed'/'warmup'
   curriculum: 0
 
-model:                                 # Model architecture
-  freeze_weights: []
+model:                                    # Model architecture
   ctc_weight: 0.5                         # Weight for CTC loss
+  freeze_weights: []
   encoder:
-    prenet: 'res'                         # 'vgg'/'cnn'/''
-    res: 256
+    prenet: 'vgg'                         # 'vgg'/'cnn'/''
     # vgg: True                             # 4x reduction on time feature extraction
+    res: 0
     module: 'LSTM'                        # 'LSTM'/'GRU'/'Transformer'
     bidirection: True
     dim: [512,512,512,512,512]

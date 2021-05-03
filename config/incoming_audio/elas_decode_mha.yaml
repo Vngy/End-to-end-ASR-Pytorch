@@ -1,7 +1,7 @@
 # Most of the parameters will be imported from the training config
 src:
-  ckpt: 'ckpt/asr_example_sd0/best_att.pth'
-  config: 'config/libri/asr_example.yaml'
+  ckpt: 'ckpt/elas_libri_256res_mha/echo_asr_ctc_mha_sd0/best_ctc.pth'
+  config: 'config/libri/echo_asr_ctc_mha.yaml'
 data:
   corpus:
     name:  'Librispeech'

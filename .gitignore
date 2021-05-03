@@ -121,6 +121,8 @@ save
 TODO
 checkpoint
 run.sh
-
+pretrained-models/*
+transcriptions/*
+incoming_audio/*
 # swap file
 *.swp
